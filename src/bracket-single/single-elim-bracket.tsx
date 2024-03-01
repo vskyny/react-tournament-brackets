@@ -6,7 +6,7 @@ import { MatchContextProvider } from 'Core/match-context';
 import MatchWrapper from 'Core/match-wrapper';
 import RoundHeader from 'Components/round-header';
 import { getPreviousMatches } from 'Core/match-functions';
-import { Match, SingleElimLeaderboardProps } from '../types';
+import { SingleElimLeaderboardProps } from '../types';
 import { defaultStyle, getCalculatedStyles } from '../settings';
 import { calculatePositionOfMatch } from './calculate-match-position';
 
@@ -30,11 +30,11 @@ const SingleEliminationBracket = ({
     ...inputStyle,
     roundHeader: {
       ...defaultStyle.roundHeader,
-      ...(inputStyle?.roundHeader ?? {}),
+      ...inputStyle.roundHeader,
     },
     lineInfo: {
       ...defaultStyle.lineInfo,
-      ...(inputStyle?.lineInfo ?? {}),
+      ...inputStyle.lineInfo,
     },
   };
 
@@ -43,25 +43,26 @@ const SingleEliminationBracket = ({
 
   const lastGame = matches.find(match => !match.nextMatchId);
 
-  const generateColumn = (matchesColumn: Match[]): Match[][] => {
-    const previousMatchesColumn = matchesColumn.reduce<Match[]>(
-      (result, match) => {
-        return [
-          ...result,
-          ...matches
-            .filter(m => m.nextMatchId === match.id)
-            .sort((a, b) => sortAlphanumerically(a.name, b.name)),
-        ];
-      },
-      []
-    );
+  const generateColumn = matchesColumn => {
+    const previousMatchesColumn = matchesColumn.reduce((result, match) => {
+      const previousMatches = matches
+        .filter(m => m.nextMatchId === match.id)
+        .sort((a, b) => sortAlphanumerically(a.name, b.name))
 
-    if (previousMatchesColumn.length > 0) {
+      if (previousMatches.length === 1) previousMatches.unshift(null);
+      if (previousMatches.length === 0) previousMatches.unshift(null, null);
+      return [
+        ...result,
+        ...previousMatches,
+      ];
+    }, []);
+
+    if (previousMatchesColumn.length > 0 && previousMatchesColumn.every(Boolean)) {
       return [...generateColumn(previousMatchesColumn), previousMatchesColumn];
     }
-    return [previousMatchesColumn];
+    return [previousMatchesColumn.some(Boolean)? previousMatchesColumn : []];
   };
-  const generate2DBracketArray = (final: Match) => {
+  const generate2DBracketArray = final => {
     return final
       ? [...generateColumn([final]), [final]].filter(arr => arr.length > 0)
       : [];
@@ -118,7 +119,7 @@ const SingleEliminationBracket = ({
                       previousBottomPosition
                     );
                   return (
-                    <g key={x + y}>
+                    <>
                       {roundHeader.isShown && (
                         <RoundHeader
                           x={x}
@@ -126,7 +127,7 @@ const SingleEliminationBracket = ({
                           canvasPadding={canvasPadding}
                           width={width}
                           numOfRounds={columns.length}
-                          tournamentRoundText={match.tournamentRoundText}
+                          tournamentRoundText={match?.tournamentRoundText}
                           columnIndex={columnIndex}
                         />
                       )}
@@ -146,7 +147,7 @@ const SingleEliminationBracket = ({
                           }}
                         />
                       )}
-                      <g>
+                      {match && <g>
                         <MatchWrapper
                           x={x}
                           y={
@@ -167,8 +168,8 @@ const SingleEliminationBracket = ({
                           style={style}
                           matchComponent={matchComponent}
                         />
-                      </g>
-                    </g>
+                      </g>}
+                    </>
                   );
                 })
               )}
